@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Alarmtiere</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #f4f6f8; margin: 0; padding: 16px; color: #333; }
+    .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    input { width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; outline: none; transition: 0.2s; }
+    input:focus { border-color: #007aff; }
+    .btn { background: #007aff; color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; font-weight: bold; margin-top: 8px; font-size: 15px; }
+    .label { font-size: 11px; text-transform: uppercase; color: #8e8e93; font-weight: bold; margin-top: 6px; }
+    .val { font-size: 16px; font-weight: 600; color: #1c1c1e; }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; background: #e5f1ff; color: #007aff; }
+    #reader { width: 100%; margin-bottom: 12px; border-radius: 12px; overflow: hidden; display: none; }
+  </style>
+</head>
+<body>
+
+  <h2>Filtro de Alarmtiere</h2>
+  
+  <input type="text" id="searchInput" placeholder="Buscar por Chip, Alarma o Nombre..." onkeyup="filtrar()">
+  <button class="btn" onclick="toggleCamara()">📷 Escanear con Cámara</button>
+  <div id="reader"></div>
+
+  <div id="lista" style="margin-top: 16px;"></div>
+
+<script>
+  let datos = [];
+
+  // Obtener datos automáticamente del servidor
+  async function cargarDatos() {
+    try {
+      const res = await fetch('http://10.46.47.1:3000/animals#standard/alarmtiere'); // O endpoint API /api/alarmtiere
+      datos = await res.json();
+      mostrar(datos);
+    } catch (e) {
+      console.log("Cargando datos localmente...");
+    }
+  }
+
+  function mostrar(items) {
+    const contenedor = document.getElementById('lista');
+    contenedor.innerHTML = items.map(item => `
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="badge">Alarma: ${item.codigo_alarma}</span>
+          <span class="badge" style="background:#f2f2f7; color:#555;">${item.ubicacion_estado}</span>
+        </div>
+        <div class="label">Nombre del Animal</div>
+        <div class="val">${item.nombre_animal}</div>
+        <div class="label">N° de Chip</div>
+        <div class="val" style="font-family:monospace; color:#d32f2f;">${item.numero_chip}</div>
+      </div>
+    `).join('');
+  }
+
+  function filtrar() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    const filtrados = datos.filter(i => 
+      i.numero_chip.toLowerCase().includes(query) ||
+      i.codigo_alarma.toLowerCase().includes(query) ||
+      i.nombre_animal.toLowerCase().includes(query)
+    );
+    mostrar(filtrados);
+  }
+
+  function toggleCamara() {
+    const reader = document.getElementById('reader');
+    if (reader.style.display === 'block') {
+      reader.style.display = 'none';
+      return;
+    }
+    reader.style.display = 'block';
+    const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    html5QrcodeScanner.render((decodedText) => {
+      document.getElementById('searchInput').value = decodedText;
+      filtrar();
+      html5QrcodeScanner.clear();
+      reader.style.display = 'none';
+    });
+  }
+
+  cargarDatos();
+</script>
+</body>
+</html>
